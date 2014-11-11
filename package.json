@@ -1,0 +1,24 @@
+{
+  "name": "cloudsearch-backbone",
+  "version": "0.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "watchify app.js -t jstify -o dist/cloudsearch.js",
+    "build": "browserify app.js -t jstify | uglifyjs -c > dist/cloudsearch.min.js",
+    "clean": "rm dist/*"
+  },
+  "author": "dhcole",
+  "license": "bsd",
+  "dependencies": {
+    "backbone": "^1.1.2",
+    "jquery": "^2.1.1",
+    "underscore": "^1.6.0"
+  },
+  "devDependencies": {
+    "browserify": "^5.9.1",
+    "jstify": "^0.7.0",
+    "uglify-js": "^2.4.15",
+    "watchify": "^1.0.1"
+  }
+}

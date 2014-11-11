@@ -1,0 +1,9 @@
+<label><%= label %></label>
+
+<% _(buckets).forEach(function(b) { %>
+
+  <a class="search-bucket <%- b.state %>" href="#">
+    <%- b.value %> (<%- b.count %>)
+  </a>
+
+<% }); %>

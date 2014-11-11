@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <title>CloudSearch Backbone.js Example</title>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <div data-search="Search" data-endpoint="">
+      <input type="search" data-search="SearchField">
+      <div class="sidebar">
+        <div data-search="Facet" data-facet="format"></div>
+        <div data-search="Facet" data-facet="source"></div>
+        <div data-search="Facet" data-facet="type_of"></div>
+      </div>
+      <div class="main">
+        <div data-search="Summary"></div>
+        <div data-search="Settings"></div>
+        <div data-search-pager=""></div>
+        <div data-search="Results"></div>
+        <div data-search="Pager"></div>
+      </div>
+    </div>
+  </body>
+	<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+  <script src="../dist/cloudsearch.js"></script>
+</html>
