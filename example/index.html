@@ -3,21 +3,44 @@
   <head>
     <title>CloudSearch Backbone.js Example</title>
     <meta charset="utf-8">
+    <link rel="stylesheet" href="https://stateinnovation.org/css/style.css">
+    <style>
+      .col {
+        float: left;
+        }
+      .sidebar {
+        width: 33%;
+        }
+      .main {
+        width: 67%;
+        }
+      .hero {
+        height: 200px;
+        text-align: center;
+        padding: 60px 0;
+        }
+      .search-bucket.active {
+        font-weight: bold;
+        }
+    </style>
   </head>
   <body>
-    <div data-search="Search" data-endpoint="">
-      <input type="search" data-search="SearchField">
-      <div class="sidebar">
-        <div data-search="Facet" data-facet="format"></div>
-        <div data-search="Facet" data-facet="source"></div>
-        <div data-search="Facet" data-facet="type_of"></div>
+    <div data-search="Search" data-return="title,summary,year,source" data-endpoint="https://stateinnovation.org/2013-01-01/search">
+      <div class="hero"><input type="search" data-search="SearchField"></div>
+      <div class="col sidebar">
+        <div data-search="Facet" data-label="Collection" data-facet="format" data-settings=""></div>
+        <div data-search="Facet" data-label="Level of government" data-facet="level"></div>
+        <div data-search="Facet" data-label="Type of law/support" data-facet="type_of"></div>
+        <div data-search="Facet" data-label="Year" data-facet="year"></div>
+        <div data-search="Facet" data-label="State" data-facet="state"></div>
+        <div data-search="Facet" data-label="Source" data-facet="source"></div>
       </div>
-      <div class="main">
+      <div class="col main">
         <div data-search="Summary"></div>
         <div data-search="Settings"></div>
-        <div data-search-pager=""></div>
-        <div data-search="Results"></div>
-        <div data-search="Pager"></div>
+        <ul data-search="Pager"></ul>
+        <div data-search="Results" data-link="/model/{{id}}" data-meta="source,year"></div>
+        <ul data-search="Pager"></ul>
       </div>
     </div>
   </body>

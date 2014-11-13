@@ -1,9 +1,6 @@
-// Libraries
-var $ = require('jquery'),
-    _ = require('underscore'),
-    Backbone = require('backbone');
+module.exports = App.View.extend({
 
-module.exports = Backbone.View.extend({
+  template: require('../templates/Template.html'),
 
   initialize: function() {
   },
@@ -12,6 +9,8 @@ module.exports = Backbone.View.extend({
   },
 
   render: function() {
-  },
+    this.$el.html(this.template(data));
+    return this;
+  }
 
 });

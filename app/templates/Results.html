@@ -1,0 +1,9 @@
+<div class="search-result">
+  <div class="search-title"><a href="<%= link %>"><%= title%></a></div>
+  <div class="search-summary"><%= summary%></div>
+  <dl class="search-meta">
+  <% _(meta).forEach(function(item) { %>
+    <dt><%= item.label %></dt><dd><%= item.value %></dd>
+  <% }) ;%>
+  </dl>
+</div>

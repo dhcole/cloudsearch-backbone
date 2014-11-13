@@ -1,9 +1,7 @@
 // Libraries
-var $ = require('jquery'),
-    _ = require('underscore'),
-    Backbone = require('backbone');
+require('../../lib/jquery.SimplePagination.js');
 
-module.exports = Backbone.View.extend({
+module.exports = App.View.extend({
 
   initialize: function() {
   },
@@ -12,6 +10,23 @@ module.exports = Backbone.View.extend({
   },
 
   render: function() {
+
+    this.$el.pagination({
+      items:  360, // this.collection.length,
+      itemsOnPage: 10, // this.model.get('itemsOnPage'),
+      currentPage: 1, // this.model.get('page'),
+      displayedPages: 5,
+      cssStyle: 'pagination',
+      prevText: '&#10094;',
+      nextText: '&#10095;',
+      onPageClick: this.loadPage
+    });
+
+    return this;
   },
+
+  loadPage: function(pageNumber, event) {
+    return false;
+  }
 
 });

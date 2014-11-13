@@ -1,43 +1,287 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/dhcole/dev/cloudsearch-backbone/app.js":[function(require,module,exports){
-var _ = require('underscore'),
-    Backbone = require('backbone');
+(function (global){
+// Shared resources
+global.App = require('backbone');
+global._ = require('underscore');
+App.$ = $;
 
-Backbone.$ = $;
+// Views
+App.Views = {
+  Search: require('./app/views/Search'),
+  Results: require('./app/views/Results'),
+  Facet: require('./app/views/Facet'),
+  Pager: require('./app/views/Pager')
+};
 
-var View = require('./app/views/Facet');
+// Models
+App.Models = {
+  Search: require('./app/models/Search')
+};
 
-new View().render();
+$(function() {
 
-},{"./app/views/Facet":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Facet.html":[function(require,module,exports){
+  $('[data-search="Search"]').each(function() {
+    App.search = new App.Models.Search({
+      'urlRoot': $(this).attr('data-endpoint'),
+      'return': $(this).attr('data-return')
+    }, {
+      container: this
+    });
+  });
+
+});
+
+
+/* Router: reads query string, sets model attributes
+
+  parse: function(res) {
+    var model = this,
+        out = {},
+        urlParts = this.url().split('?')[1].split('&');
+
+    out.facets = res.facets;
+    out.results = res.hits.hit;
+    out.found = res.hits.found;
+
+    _(urlParts).forEach(function(part) {
+      var split = part.split('='),
+          param = split[0],
+          value = split[1],
+          match = _(model.get('params')).find(function(p) {
+            return (p.param === param);
+          }),
+          key = (match) ? match.attr : param;
+
+      out[key] = decodeURIComponent(value);
+    });
+
+    return out;
+  },
+
+
+
+
+*/
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./app/models/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js","./app/views/Facet":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js","./app/views/Pager":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js","./app/views/Results":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js","./app/views/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js":[function(require,module,exports){
+module.exports = App.Model.extend({
+
+  defaults: {
+    query: 'matchall',
+    parser: 'structured',
+    size: 20,
+    partial: false,
+    highlights: {},
+    expressions: {},
+    facets: {}, // Facet results
+    getFacets: {}, // URL param facets
+    filters: [],
+    params: [
+      { attr: 'query', param: 'q' },
+      { attr: 'parser', param: 'q.parser' },
+      { attr: 'options', param: 'q.options' },
+      'cursor',
+      'partial',
+      'return',
+      'size',
+      'sort',
+      'start'
+    ]
+  },
+
+  url: function(base) {
+    var parts = [],
+        base = base || this.get('urlRoot'),
+        model = this,
+        params = _(this.get('params')).clone(),
+        filters = [];
+
+    // Facets
+    _(model.get('getFacets')).forEach(function(settings, id) {
+      params.push({ attr: 'facet.' + id, value: settings });
+    });
+
+    // Filters
+    if (model.get('filters').length) {
+
+      filters = _(model.get('filters')).map(function(filter) {
+        return filter.id + ': ' + JSON.stringify(filter.bucket).replace(/"/g, "'");
+      });
+
+      params.push({
+        param: 'fq', 
+        value: '(and ' + filters.join(' ') + ')'
+      });
+    }
+
+    // Highlights
+    _(model.get('highlights')).forEach(function(settings, id) {
+      params.push({ attr: 'highlight.' + id, value: settings });
+    });
+
+    // Expressions
+    _(model.get('expressions')).forEach(function(settings, id) {
+      params.push({ attr: 'expr.' + id, value: settings });
+    });
+
+    // Format url request parameters
+    _(params).forEach(function(param) {
+      var attr = param.attr || param,
+          value = param.value || model.get(attr),
+          param = param.param || param.attr || param;
+
+      if (value !== undefined && 
+          value !== null &&
+          value !== '') parts.push(param + '=' + encodeURIComponent(value));
+    });
+
+    return base + '?' + parts.join('&');
+
+  },
+
+  parse: function(res) {
+    return {
+      facets: res.facets,
+      results: res.hits.hit,
+      found: res.hits.found
+    };
+  },
+
+  initialize: function(attributes, options) {
+    this.view = new App.Views.Search({
+      el: options.container,
+      model: this
+    });
+
+    this.on('change', this.load, this);
+    this.load();
+
+  },
+
+  load: function(model, options) {
+    this.fetch({
+      silent: true,
+      success: function(model, res, options) {
+        model.view.render();
+      }
+    });
+  }
+
+});
+
+},{}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Facet.html":[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
 with(obj||{}){
 __p+='<label>'+
 ((__t=( label ))==null?'':__t)+
-'</label>';
+'</label><ol class="list-unstyled">';
  _(buckets).forEach(function(b) { 
-__p+='<a class="search-bucket '+
+__p+='<li><a class="search-bucket '+
 ((__t=( b.state ))==null?'':_.escape(__t))+
-'" href="#">'+
+'" data-bucket="'+
 ((__t=( b.value ))==null?'':_.escape(__t))+
-'('+
-((__t=( b.count ))==null?'':_.escape(__t))+
-')</a>';
+'" href="#">'+
+((__t=( b.value ))==null?'':__t)+
+'<span class="search-count">('+
+((__t=( b.count ))==null?'':__t)+
+')</span></a></li>';
  }); 
-__p+='';
+__p+='</ol>';
+}
+return __p;
+};
+
+},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/NoResults.html":[function(require,module,exports){
+var _ = require('underscore');
+module.exports = function(obj){
+var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
+with(obj||{}){
+__p+='Sorry, no results were found for your search.';
+}
+return __p;
+};
+
+},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Results.html":[function(require,module,exports){
+var _ = require('underscore');
+module.exports = function(obj){
+var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
+with(obj||{}){
+__p+='<div class="search-result"><div class="search-title"><a href="'+
+((__t=( link ))==null?'':__t)+
+'">'+
+((__t=( title))==null?'':__t)+
+'</a></div><div class="search-summary">'+
+((__t=( summary))==null?'':__t)+
+'</div><dl class="search-meta">';
+ _(meta).forEach(function(item) { 
+__p+='<dt>'+
+((__t=( item.label ))==null?'':__t)+
+'</dt><dd>'+
+((__t=( item.value ))==null?'':__t)+
+'</dd>';
+ }) ;
+__p+='</dl></div>';
 }
 return __p;
 };
 
 },{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js":[function(require,module,exports){
-// Libraries
-var _ = require('underscore'),
-    Backbone = require('backbone');
-
-module.exports = Backbone.View.extend({
+module.exports = App.View.extend({
 
   template: require('../templates/Facet.html'),
+
+  initialize: function(options) {
+    this.label = options.label || this.id;
+  },
+
+  events: {
+    'click .search-bucket': 'filter'
+  },
+
+  render: function() {
+    var id = this.id,
+        data = this.model.get('facets')[id],
+        filters = this.model.get('filters');
+
+    data.label = this.label;
+
+    _(data.buckets).forEach(function(bucket) {
+      var match = _(filters).findWhere({ id: id, bucket: bucket.value });
+      if (match) bucket.state = 'active';
+    });
+
+    this.$el.html(this.template(data));
+
+    return this;
+  },
+
+  filter: function(e) {
+    var bucket = this.$(e.currentTarget).attr('data-bucket'),
+        filter = { id: this.id, bucket: bucket },
+        filters = _(this.model.get('filters')).clone(),
+        matches = _(filters).findWhere(filter);
+
+    if (matches) {
+      filters = _(filters).reject(function(f) {
+        return (filter.id === f.id && filter.bucket === f.bucket);
+      });
+    } else {
+      filters.push(filter);
+    }
+    this.model.set('filters', filters);
+
+    return false;
+  }
+
+});
+
+},{"../templates/Facet.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Facet.html"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js":[function(require,module,exports){
+// Libraries
+require('../../lib/jquery.SimplePagination.js');
+
+module.exports = App.View.extend({
 
   initialize: function() {
   },
@@ -46,12 +290,466 @@ module.exports = Backbone.View.extend({
   },
 
   render: function() {
-    this.$el.html(this.template(this.model));
+
+    this.$el.pagination({
+      items:  360, // this.collection.length,
+      itemsOnPage: 10, // this.model.get('itemsOnPage'),
+      currentPage: 1, // this.model.get('page'),
+      displayedPages: 5,
+      cssStyle: 'pagination',
+      prevText: '&#10094;',
+      nextText: '&#10095;',
+      onPageClick: this.loadPage
+    });
+
+    return this;
+  },
+
+  loadPage: function(pageNumber, event) {
+    return false;
   }
 
 });
 
-},{"../templates/Facet.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Facet.html","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js":[function(require,module,exports){
+},{"../../lib/jquery.SimplePagination.js":"/Users/dhcole/dev/cloudsearch-backbone/lib/jquery.SimplePagination.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js":[function(require,module,exports){
+module.exports = App.View.extend({
+
+  template: require('../templates/Results.html'),
+  emptyTemplate: require('../templates/NoResults.html'),
+
+  initialize: function(options) {
+    this.link = options.link;
+    this.meta = options.meta.split(',');
+  },
+
+  events: {
+  },
+
+  render: function() {
+    var view = this,
+        results = this.model.get('results');
+
+    view.$el.empty();
+
+    if (results.length) {
+
+      _(results).forEach(function(item) {
+        var data = item.fields;
+        data.id = item.id;
+        data.link = _(view.link).template({ interpolate: /\{\{(.+?)\}\}/g })(data);
+        data.meta = {};
+
+        _(view.meta).forEach(function(m) {
+          data.meta[m] = { label: m, value: data[m] };
+        });
+
+        view.$el.append(view.template(data));
+      });
+
+    } else {
+      view.$el.html(view.emptyTemplate());
+    }
+
+    return this;
+  },
+
+});
+
+},{"../templates/NoResults.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/NoResults.html","../templates/Results.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Results.html"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js":[function(require,module,exports){
+module.exports = App.View.extend({
+
+  initialize: function() {
+    var model = this.model,
+        view = this;
+    this.views = [];
+
+    // Load facets
+    this.$('[data-search="Facet"]').each(function() {
+      var id = $(this).attr('data-facet'),
+          label = $(this).attr('data-label'),
+          settings = $(this).attr('data-settings') || '{}';
+      model.get('getFacets')[id] = settings;
+
+      view.views.push(new App.Views.Facet({
+        model: model,
+        label: label,
+        el: this,
+        id: id
+      }));
+    });
+
+    // Load pagers
+    this.$('[data-search="Pager"]').each(function() {
+      view.views.push(new App.Views.Pager({ 
+        el: this,
+        model: model
+      }));
+    });
+
+    // Load results
+    this.$('[data-search="Results"]').each(function() {
+      view.views.push(new App.Views.Results({ 
+        el: this,
+        model: model,
+        link: $(this).attr('data-link'),
+        meta: $(this).attr('data-meta')
+      }));
+    });
+
+  },
+
+  events: {
+  },
+
+  render: function() {
+
+    _(this.views).forEach(function(view) {
+      view.render();
+    });
+
+    return this;
+  }
+
+});
+
+},{}],"/Users/dhcole/dev/cloudsearch-backbone/lib/jquery.SimplePagination.js":[function(require,module,exports){
+/**
+* simplePagination.js v1.6
+* A simple jQuery pagination plugin.
+* http://flaviusmatis.github.com/simplePagination.js/
+*
+* Copyright 2012, Flavius Matis
+* Released under the MIT license.
+* http://flaviusmatis.github.com/license.html
+*/
+
+(function($){
+
+	var methods = {
+		init: function(options) {
+			var o = $.extend({
+				items: 1,
+				itemsOnPage: 1,
+				pages: 0,
+				displayedPages: 5,
+				edges: 2,
+				currentPage: 0,
+				hrefTextPrefix: '#page-',
+				hrefTextSuffix: '',
+				prevText: 'Prev',
+				nextText: 'Next',
+				ellipseText: '&hellip;',
+				cssStyle: 'light-theme',
+				labelMap: [],
+				selectOnClick: true,
+				nextAtFront: false,
+				invertPageOrder: false,
+				useStartEdge : true,
+				useEndEdge : true,
+				onPageClick: function(pageNumber, event) {
+					// Callback triggered when a page is clicked
+					// Page number is given as an optional parameter
+				},
+				onInit: function() {
+					// Callback triggered immediately after initialization
+				}
+			}, options || {});
+
+			var self = this;
+
+			o.pages = o.pages ? o.pages : Math.ceil(o.items / o.itemsOnPage) ? Math.ceil(o.items / o.itemsOnPage) : 1;
+			if (o.currentPage)
+				o.currentPage = o.currentPage - 1;
+			else
+				o.currentPage = !o.invertPageOrder ? 0 : o.pages - 1;
+			o.halfDisplayed = o.displayedPages / 2;
+
+			this.each(function() {
+				self.addClass(o.cssStyle + ' simple-pagination').data('pagination', o);
+				methods._draw.call(self);
+			});
+
+			o.onInit();
+
+			return this;
+		},
+
+		selectPage: function(page) {
+			methods._selectPage.call(this, page - 1);
+			return this;
+		},
+
+		prevPage: function() {
+			var o = this.data('pagination');
+			if (!o.invertPageOrder) {
+				if (o.currentPage > 0) {
+					methods._selectPage.call(this, o.currentPage - 1);
+				}
+			} else {
+				if (o.currentPage < o.pages - 1) {
+					methods._selectPage.call(this, o.currentPage + 1);
+				}
+			}
+			return this;
+		},
+
+		nextPage: function() {
+			var o = this.data('pagination');
+			if (!o.invertPageOrder) {
+				if (o.currentPage < o.pages - 1) {
+					methods._selectPage.call(this, o.currentPage + 1);
+				}
+			} else {
+				if (o.currentPage > 0) {
+					methods._selectPage.call(this, o.currentPage - 1);
+				}
+			}
+			return this;
+		},
+
+		getPagesCount: function() {
+			return this.data('pagination').pages;
+		},
+
+		getCurrentPage: function () {
+			return this.data('pagination').currentPage + 1;
+		},
+
+		destroy: function(){
+			this.empty();
+			return this;
+		},
+
+		drawPage: function (page) {
+			var o = this.data('pagination');
+			o.currentPage = page - 1;
+			this.data('pagination', o);
+			methods._draw.call(this);
+			return this;
+		},
+
+		redraw: function(){
+			methods._draw.call(this);
+			return this;
+		},
+
+		disable: function(){
+			var o = this.data('pagination');
+			o.disabled = true;
+			this.data('pagination', o);
+			methods._draw.call(this);
+			return this;
+		},
+
+		enable: function(){
+			var o = this.data('pagination');
+			o.disabled = false;
+			this.data('pagination', o);
+			methods._draw.call(this);
+			return this;
+		},
+
+		updateItems: function (newItems) {
+			var o = this.data('pagination');
+			o.items = newItems;
+			o.pages = methods._getPages(o);
+			this.data('pagination', o);
+			methods._draw.call(this);
+		},
+
+		updateItemsOnPage: function (itemsOnPage) {
+			var o = this.data('pagination');
+			o.itemsOnPage = itemsOnPage;
+			o.pages = methods._getPages(o);
+			this.data('pagination', o);
+			methods._selectPage.call(this, 0);
+			return this;
+		},
+
+		_draw: function() {
+			var	o = this.data('pagination'),
+				interval = methods._getInterval(o),
+				i,
+				tagName;
+
+			methods.destroy.call(this);
+			
+			tagName = (typeof this.prop === 'function') ? this.prop('tagName') : this.attr('tagName');
+
+			var $panel = tagName === 'UL' ? this : $('<ul></ul>').appendTo(this);
+
+			// Generate Prev link
+			if (o.prevText) {
+				methods._appendItem.call(this, !o.invertPageOrder ? o.currentPage - 1 : o.currentPage + 1, {text: o.prevText, classes: 'prev'});
+			}
+
+			// Generate Next link (if option set for at front)
+			if (o.nextText && o.nextAtFront) {
+				methods._appendItem.call(this, !o.invertPageOrder ? o.currentPage + 1 : o.currentPage - 1, {text: o.nextText, classes: 'next'});
+			}
+
+			// Generate start edges
+			if (!o.invertPageOrder) {
+				if (interval.start > 0 && o.edges > 0) {
+					if(o.useStartEdge) {
+						var end = Math.min(o.edges, interval.start);
+						for (i = 0; i < end; i++) {
+							methods._appendItem.call(this, i);
+						}
+					}
+					if (o.edges < interval.start && (interval.start - o.edges != 1)) {
+						$panel.append('<li class="disabled"><span class="ellipse">' + o.ellipseText + '</span></li>');
+					} else if (interval.start - o.edges == 1) {
+						methods._appendItem.call(this, o.edges);
+					}
+				}
+			} else {
+				if (interval.end < o.pages && o.edges > 0) {
+					if(o.useStartEdge) {
+						var begin = Math.max(o.pages - o.edges, interval.end);
+						for (i = o.pages - 1; i >= begin; i--) {
+							methods._appendItem.call(this, i);
+						}
+					}
+
+					if (o.pages - o.edges > interval.end && (o.pages - o.edges - interval.end != 1)) {
+						$panel.append('<li class="disabled"><span class="ellipse">' + o.ellipseText + '</span></li>');
+					} else if (o.pages - o.edges - interval.end == 1) {
+						methods._appendItem.call(this, interval.end);
+					}
+				}
+			}
+
+			// Generate interval links
+			if (!o.invertPageOrder) {
+				for (i = interval.start; i < interval.end; i++) {
+					methods._appendItem.call(this, i);
+				}
+			} else {
+				for (i = interval.end - 1; i >= interval.start; i--) {
+					methods._appendItem.call(this, i);
+				}
+			}
+
+			// Generate end edges
+			if (!o.invertPageOrder) {
+				if (interval.end < o.pages && o.edges > 0) {
+					if (o.pages - o.edges > interval.end && (o.pages - o.edges - interval.end != 1)) {
+						$panel.append('<li class="disabled"><span class="ellipse">' + o.ellipseText + '</span></li>');
+					} else if (o.pages - o.edges - interval.end == 1) {
+						methods._appendItem.call(this, interval.end);
+					}
+					if(o.useEndEdge) {
+						var begin = Math.max(o.pages - o.edges, interval.end);
+						for (i = begin; i < o.pages; i++) {
+							methods._appendItem.call(this, i);
+						}
+					}
+				}
+			} else {
+				if (interval.start > 0 && o.edges > 0) {
+					if (o.edges < interval.start && (interval.start - o.edges != 1)) {
+						$panel.append('<li class="disabled"><span class="ellipse">' + o.ellipseText + '</span></li>');
+					} else if (interval.start - o.edges == 1) {
+						methods._appendItem.call(this, o.edges);
+					}
+
+					if(o.useEndEdge) {
+						var end = Math.min(o.edges, interval.start);
+						for (i = end - 1; i >= 0; i--) {
+							methods._appendItem.call(this, i);
+						}
+					}
+				}
+			}
+
+			// Generate Next link (unless option is set for at front)
+			if (o.nextText && !o.nextAtFront) {
+				methods._appendItem.call(this, !o.invertPageOrder ? o.currentPage + 1 : o.currentPage - 1, {text: o.nextText, classes: 'next'});
+			}
+		},
+
+		_getPages: function(o) {
+			var pages = Math.ceil(o.items / o.itemsOnPage);
+			return pages || 1;
+		},
+
+		_getInterval: function(o) {
+			return {
+				start: Math.ceil(o.currentPage > o.halfDisplayed ? Math.max(Math.min(o.currentPage - o.halfDisplayed, (o.pages - o.displayedPages)), 0) : 0),
+				end: Math.ceil(o.currentPage > o.halfDisplayed ? Math.min(o.currentPage + o.halfDisplayed, o.pages) : Math.min(o.displayedPages, o.pages))
+			};
+		},
+
+		_appendItem: function(pageIndex, opts) {
+			var self = this, options, $link, o = self.data('pagination'), $linkWrapper = $('<li></li>'), $ul = self.find('ul');
+
+			pageIndex = pageIndex < 0 ? 0 : (pageIndex < o.pages ? pageIndex : o.pages - 1);
+
+			options = {
+				text: pageIndex + 1,
+				classes: ''
+			};
+
+			if (o.labelMap.length && o.labelMap[pageIndex]) {
+				options.text = o.labelMap[pageIndex];
+			}
+
+			options = $.extend(options, opts || {});
+
+			if (pageIndex == o.currentPage || o.disabled) {
+				if (o.disabled) {
+					$linkWrapper.addClass('disabled');
+				} else {
+					$linkWrapper.addClass('active');
+				}
+				$link = $('<span class="current">' + (options.text) + '</span>');
+			} else {
+				$link = $('<a href="' + o.hrefTextPrefix + (pageIndex + 1) + o.hrefTextSuffix + '" class="page-link">' + (options.text) + '</a>');
+				$link.click(function(event){
+					return methods._selectPage.call(self, pageIndex, event);
+				});
+			}
+
+			if (options.classes) {
+				$link.addClass(options.classes);
+			}
+
+			$linkWrapper.append($link);
+
+			if ($ul.length) {
+				$ul.append($linkWrapper);
+			} else {
+				self.append($linkWrapper);
+			}
+		},
+
+		_selectPage: function(pageIndex, event) {
+			var o = this.data('pagination');
+			o.currentPage = pageIndex;
+			if (o.selectOnClick) {
+				methods._draw.call(this);
+			}
+			return o.onPageClick(pageIndex + 1, event);
+		}
+
+	};
+
+	$.fn.pagination = function(method) {
+
+		// Method calling logic
+		if (methods[method] && method.charAt(0) != '_') {
+			return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
+		} else if (typeof method === 'object' || !method) {
+			return methods.init.apply(this, arguments);
+		} else {
+			$.error('Method ' +  method + ' does not exist on jQuery.pagination');
+		}
+
+	};
+
+})(jQuery);
+},{}],"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js":[function(require,module,exports){
 //     Backbone.js 1.1.2
 
 //     (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors

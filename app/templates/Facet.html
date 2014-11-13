@@ -1,9 +1,8 @@
 <label><%= label %></label>
-
+<ol class="list-unstyled">
 <% _(buckets).forEach(function(b) { %>
-
-  <a class="search-bucket <%- b.state %>" href="#">
-    <%- b.value %> (<%- b.count %>)
-  </a>
-
+  <li><a class="search-bucket <%- b.state %>" data-bucket="<%- b.value %>" href="#">
+    <%= b.value %><span class="search-count">(<%= b.count %>)</span>
+  </a></li>
 <% }); %>
+</ol>
