@@ -5,6 +5,14 @@ module.exports = App.View.extend({
         view = this;
     this.views = [];
 
+    // Load search field
+    this.$('[data-search="SearchField"]').each(function() {
+      view.views.push(new App.Views.SearchField({ 
+        el: this,
+        model: model
+      }));
+    });
+
     // Load facets
     this.$('[data-search="Facet"]').each(function() {
       var id = $(this).attr('data-facet'),

@@ -1,17 +1,31 @@
-// Libraries
-var $ = require('jquery'),
-    _ = require('underscore'),
-    Backbone = require('backbone');
+module.exports = App.View.extend({
 
-module.exports = Backbone.View.extend({
+  template: require('../templates/SearchField.html'),
 
   initialize: function() {
   },
 
   events: {
+    'submit form': 'submit'
   },
 
   render: function() {
+    var query = this.model.get('query');
+    if (this.model.get('parser') && query === 'matchall') query = '';
+    this.$el.html(this.template({ query: query }));
+
+    return this;
   },
+
+  submit: function(e) {
+    var query = this.$('input[type="search"]').val();
+    this.model.set({
+      parser: undefined,
+      query: query, 
+      start: 0
+    });
+
+    return false;
+  }
 
 });

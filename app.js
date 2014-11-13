@@ -6,6 +6,7 @@ App.$ = $;
 // Views
 App.Views = {
   Search: require('./app/views/Search'),
+  SearchField: require('./app/views/SearchField'),
   Results: require('./app/views/Results'),
   Facet: require('./app/views/Facet'),
   Pager: require('./app/views/Pager')

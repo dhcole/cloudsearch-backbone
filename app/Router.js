@@ -29,7 +29,7 @@ module.exports = App.Router.extend({
       if (_(model.get('params')).indexOf(key) >= 0) {
         attributes[key] = decodeURIComponent(value);
       }
-
+      if (key === 'parser') attributes[key] = decodeURIComponent(value);
       if (key === 'query') attributes[key] = decodeURIComponent(value);
       if (key === 'fq') fq = decodeURIComponent(value);
     });
@@ -42,6 +42,9 @@ module.exports = App.Router.extend({
       });
       attributes.filters = fq;
     }
+
+    // Remove structured parser for normal text searches
+    if (!attributes.parser) attributes.parser = undefined;
 
     // Set attributes and request data without updating url
     model.set(attributes, { silent: true }).load();

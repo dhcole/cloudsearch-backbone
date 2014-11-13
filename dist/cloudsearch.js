@@ -8,6 +8,7 @@ App.$ = $;
 // Views
 App.Views = {
   Search: require('./app/views/Search'),
+  SearchField: require('./app/views/SearchField'),
   Results: require('./app/views/Results'),
   Facet: require('./app/views/Facet'),
   Pager: require('./app/views/Pager')
@@ -43,7 +44,7 @@ $(function() {
 });
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./app/Router":"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js","./app/models/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js","./app/views/Facet":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js","./app/views/Pager":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js","./app/views/Results":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js","./app/views/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js":[function(require,module,exports){
+},{"./app/Router":"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js","./app/models/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js","./app/views/Facet":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js","./app/views/Pager":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js","./app/views/Results":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js","./app/views/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js","./app/views/SearchField":"/Users/dhcole/dev/cloudsearch-backbone/app/views/SearchField.js","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js":[function(require,module,exports){
 module.exports = App.Router.extend({
 
   initialize: function(options) {
@@ -75,7 +76,7 @@ module.exports = App.Router.extend({
       if (_(model.get('params')).indexOf(key) >= 0) {
         attributes[key] = decodeURIComponent(value);
       }
-
+      if (key === 'parser') attributes[key] = decodeURIComponent(value);
       if (key === 'query') attributes[key] = decodeURIComponent(value);
       if (key === 'fq') fq = decodeURIComponent(value);
     });
@@ -88,6 +89,9 @@ module.exports = App.Router.extend({
       });
       attributes.filters = fq;
     }
+
+    // Remove structured parser for normal text searches
+    if (!attributes.parser) attributes.parser = undefined;
 
     // Set attributes and request data without updating url
     model.set(attributes, { silent: true }).load();
@@ -214,6 +218,8 @@ var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
 with(obj||{}){
+__p+='';
+ if (buckets.length) { 
 __p+='<label>'+
 ((__t=( label ))==null?'':__t)+
 '</label><ol class="list-unstyled">';
@@ -229,6 +235,8 @@ __p+='<li><a class="search-bucket '+
 ')</span></a></li>';
  }); 
 __p+='</ol>';
+ } 
+__p+='';
 }
 return __p;
 };
@@ -263,6 +271,18 @@ __p+='<dt>'+
 '</dd>';
  }) ;
 __p+='</dl></div>';
+}
+return __p;
+};
+
+},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/SearchField.html":[function(require,module,exports){
+var _ = require('underscore');
+module.exports = function(obj){
+var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
+with(obj||{}){
+__p+='<form class="form-inline"><input type="search" class="form-control" placeholder="Find&hellip;" value="'+
+((__t=( query ))==null?'':_.escape(__t))+
+'"></form>';
 }
 return __p;
 };
@@ -404,6 +424,14 @@ module.exports = App.View.extend({
         view = this;
     this.views = [];
 
+    // Load search field
+    this.$('[data-search="SearchField"]').each(function() {
+      view.views.push(new App.Views.SearchField({ 
+        el: this,
+        model: model
+      }));
+    });
+
     // Load facets
     this.$('[data-search="Facet"]').each(function() {
       var id = $(this).attr('data-facet'),
@@ -453,7 +481,40 @@ module.exports = App.View.extend({
 
 });
 
-},{}],"/Users/dhcole/dev/cloudsearch-backbone/lib/jquery.SimplePagination.js":[function(require,module,exports){
+},{}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/SearchField.js":[function(require,module,exports){
+module.exports = App.View.extend({
+
+  template: require('../templates/SearchField.html'),
+
+  initialize: function() {
+  },
+
+  events: {
+    'submit form': 'submit'
+  },
+
+  render: function() {
+    var query = this.model.get('query');
+    if (this.model.get('parser') && query === 'matchall') query = '';
+    this.$el.html(this.template({ query: query }));
+
+    return this;
+  },
+
+  submit: function(e) {
+    var query = this.$('input[type="search"]').val();
+    this.model.set({
+      parser: undefined,
+      query: query, 
+      start: 0
+    });
+
+    return false;
+  }
+
+});
+
+},{"../templates/SearchField.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/SearchField.html"}],"/Users/dhcole/dev/cloudsearch-backbone/lib/jquery.SimplePagination.js":[function(require,module,exports){
 /**
 * simplePagination.js v1.6
 * A simple jQuery pagination plugin.

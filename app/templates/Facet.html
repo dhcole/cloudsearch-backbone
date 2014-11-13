@@ -1,3 +1,4 @@
+<% if (buckets.length) { %>
 <label><%= label %></label>
 <ol class="list-unstyled">
 <% _(buckets).forEach(function(b) { %>
@@ -6,3 +7,4 @@
   </a></li>
 <% }); %>
 </ol>
+<% } %>
