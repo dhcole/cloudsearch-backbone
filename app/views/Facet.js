@@ -40,7 +40,7 @@ module.exports = App.View.extend({
     } else {
       filters.push(filter);
     }
-    this.model.set('filters', filters);
+    this.model.set({ filters: filters, start: 0 });
 
     return false;
   }

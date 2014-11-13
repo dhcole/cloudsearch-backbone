@@ -18,30 +18,50 @@ App.Models = {
   Search: require('./app/models/Search')
 };
 
+// Router
+App.Router = require('./app/Router');
+
 $(function() {
 
-  $('[data-search="Search"]').each(function() {
-    App.search = new App.Models.Search({
-      'urlRoot': $(this).attr('data-endpoint'),
-      'return': $(this).attr('data-return')
-    }, {
-      container: this
-    });
+  var $search = $('[data-search="Search"]');
+
+  App.search = new App.Models.Search({
+    'urlRoot': $search.attr('data-endpoint'),
+    'return': $search.attr('data-return')
+  }, {
+    container: this
+  });
+
+  // Start router
+  App.router = new App.Router({ model: App.search });
+  App.history.start({
+    pushState: true,
+    hashChange: false,
+    root: $search.attr('data-path') || ''
   });
 
 });
 
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./app/Router":"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js","./app/models/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js","./app/views/Facet":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js","./app/views/Pager":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js","./app/views/Results":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js","./app/views/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js":[function(require,module,exports){
+module.exports = App.Router.extend({
 
-/* Router: reads query string, sets model attributes
+  initialize: function(options) {
+    this.model = options.model;
+  },
 
-  parse: function(res) {
-    var model = this,
-        out = {},
-        urlParts = this.url().split('?')[1].split('&');
+  routes: { '*path': 'all' },
 
-    out.facets = res.facets;
-    out.results = res.hits.hit;
-    out.found = res.hits.found;
+  all: function(path, qs) {
+    if (!qs) {
+      this.model.load();
+      return;
+    }
+
+    var model = this.model,
+        attributes = {},
+        urlParts = qs.split('&'),
+        fq = '';
 
     _(urlParts).forEach(function(part) {
       var split = part.split('='),
@@ -52,24 +72,38 @@ $(function() {
           }),
           key = (match) ? match.attr : param;
 
-      out[key] = decodeURIComponent(value);
+      if (_(model.get('params')).indexOf(key) >= 0) {
+        attributes[key] = decodeURIComponent(value);
+      }
+
+      if (key === 'query') attributes[key] = decodeURIComponent(value);
+      if (key === 'fq') fq = decodeURIComponent(value);
     });
 
-    return out;
-  },
+    // Parse filters
+    if (fq) {
+      fq = fq.match(/\s\(.+?\)/g).map(function(part) {
+        var matches = part.match(/\w\s(.+?):\s'(.+?)'/);
+        return { id: matches[1], bucket: matches[2] };
+      });
+      attributes.filters = fq;
+    }
 
+    // Set attributes and request data without updating url
+    model.set(attributes, { silent: true }).load();
 
+  }
 
+});
 
-*/
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./app/models/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js","./app/views/Facet":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js","./app/views/Pager":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js","./app/views/Results":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js","./app/views/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js":[function(require,module,exports){
+},{}],"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js":[function(require,module,exports){
 module.exports = App.Model.extend({
 
   defaults: {
     query: 'matchall',
     parser: 'structured',
-    size: 20,
+    size: 10,
+    start: 0,
     partial: false,
     highlights: {},
     expressions: {},
@@ -91,10 +125,11 @@ module.exports = App.Model.extend({
 
   url: function(base) {
     var parts = [],
-        base = base || this.get('urlRoot'),
         model = this,
         params = _(this.get('params')).clone(),
         filters = [];
+
+    if (base === undefined) base = this.get('urlRoot'),
 
     // Facets
     _(model.get('getFacets')).forEach(function(settings, id) {
@@ -105,7 +140,8 @@ module.exports = App.Model.extend({
     if (model.get('filters').length) {
 
       filters = _(model.get('filters')).map(function(filter) {
-        return filter.id + ': ' + JSON.stringify(filter.bucket).replace(/"/g, "'");
+        var bucket = "'" + filter.bucket + "'";
+        return '(and ' + filter.id + ': ' + bucket + ')';
       });
 
       params.push({
@@ -153,9 +189,13 @@ module.exports = App.Model.extend({
       model: this
     });
 
-    this.on('change', this.load, this);
-    this.load();
+    this.on('change', this.update, this);
 
+  },
+
+  update: function(model, options) {
+    App.router.navigate(this.url(''));
+    this.load(this);
   },
 
   load: function(model, options) {
@@ -270,7 +310,7 @@ module.exports = App.View.extend({
     } else {
       filters.push(filter);
     }
-    this.model.set('filters', filters);
+    this.model.set({ filters: filters, start: 0 });
 
     return false;
   }
@@ -290,22 +330,23 @@ module.exports = App.View.extend({
   },
 
   render: function() {
-
-    this.$el.pagination({
-      items:  360, // this.collection.length,
-      itemsOnPage: 10, // this.model.get('itemsOnPage'),
-      currentPage: 1, // this.model.get('page'),
+    this.$el.html('<ul></ul>');
+    this.$('ul').pagination({
+      items:  this.model.get('found'),
+      itemsOnPage: this.model.get('size'),
+      currentPage: Math.floor(this.model.get('start') / this.model.get('size')) + 1,
       displayedPages: 5,
       cssStyle: 'pagination',
       prevText: '&#10094;',
       nextText: '&#10095;',
-      onPageClick: this.loadPage
+      onPageClick: _(this.loadPage).bind(this)
     });
 
     return this;
   },
 
   loadPage: function(pageNumber, event) {
+    this.model.set('start', this.model.get('size') * pageNumber - this.model.get('size'));
     return false;
   }
 

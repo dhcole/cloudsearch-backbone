@@ -3,7 +3,8 @@ module.exports = App.Model.extend({
   defaults: {
     query: 'matchall',
     parser: 'structured',
-    size: 20,
+    size: 10,
+    start: 0,
     partial: false,
     highlights: {},
     expressions: {},
@@ -25,10 +26,11 @@ module.exports = App.Model.extend({
 
   url: function(base) {
     var parts = [],
-        base = base || this.get('urlRoot'),
         model = this,
         params = _(this.get('params')).clone(),
         filters = [];
+
+    if (base === undefined) base = this.get('urlRoot'),
 
     // Facets
     _(model.get('getFacets')).forEach(function(settings, id) {
@@ -39,7 +41,8 @@ module.exports = App.Model.extend({
     if (model.get('filters').length) {
 
       filters = _(model.get('filters')).map(function(filter) {
-        return filter.id + ': ' + JSON.stringify(filter.bucket).replace(/"/g, "'");
+        var bucket = "'" + filter.bucket + "'";
+        return '(and ' + filter.id + ': ' + bucket + ')';
       });
 
       params.push({
@@ -87,9 +90,13 @@ module.exports = App.Model.extend({
       model: this
     });
 
-    this.on('change', this.load, this);
-    this.load();
+    this.on('change', this.update, this);
 
+  },
+
+  update: function(model, options) {
+    App.router.navigate(this.url(''));
+    this.load(this);
   },
 
   load: function(model, options) {

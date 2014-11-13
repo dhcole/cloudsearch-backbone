@@ -10,22 +10,23 @@ module.exports = App.View.extend({
   },
 
   render: function() {
-
-    this.$el.pagination({
-      items:  360, // this.collection.length,
-      itemsOnPage: 10, // this.model.get('itemsOnPage'),
-      currentPage: 1, // this.model.get('page'),
+    this.$el.html('<ul></ul>');
+    this.$('ul').pagination({
+      items:  this.model.get('found'),
+      itemsOnPage: this.model.get('size'),
+      currentPage: Math.floor(this.model.get('start') / this.model.get('size')) + 1,
       displayedPages: 5,
       cssStyle: 'pagination',
       prevText: '&#10094;',
       nextText: '&#10095;',
-      onPageClick: this.loadPage
+      onPageClick: _(this.loadPage).bind(this)
     });
 
     return this;
   },
 
   loadPage: function(pageNumber, event) {
+    this.model.set('start', this.model.get('size') * pageNumber - this.model.get('size'));
     return false;
   }
 

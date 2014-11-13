@@ -7,6 +7,7 @@
     <style>
       .col {
         float: left;
+        padding: 20px;
         }
       .sidebar {
         width: 33%;
@@ -14,7 +15,7 @@
       .main {
         width: 67%;
         }
-      .hero {
+      .intro {
         height: 200px;
         text-align: center;
         padding: 60px 0;
@@ -25,8 +26,10 @@
     </style>
   </head>
   <body>
-    <div data-search="Search" data-return="title,summary,year,source" data-endpoint="https://stateinnovation.org/2013-01-01/search">
-      <div class="hero"><input type="search" data-search="SearchField"></div>
+    <div data-search="Search" data-return="title,summary,year,source" data-endpoint="https://stateinnovation.org/2013-01-01/search" data-path="/example/">
+      <div class="intro">
+        <div data-search="SearchField"></div>
+      </div>
       <div class="col sidebar">
         <div data-search="Facet" data-label="Collection" data-facet="format" data-settings=""></div>
         <div data-search="Facet" data-label="Level of government" data-facet="level"></div>
@@ -38,9 +41,9 @@
       <div class="col main">
         <div data-search="Summary"></div>
         <div data-search="Settings"></div>
-        <ul data-search="Pager"></ul>
+        <div data-search="Pager"></div>
         <div data-search="Results" data-link="/model/{{id}}" data-meta="source,year"></div>
-        <ul data-search="Pager"></ul>
+        <div data-search="Pager"></div>
       </div>
     </div>
   </body>

@@ -16,47 +16,26 @@ App.Models = {
   Search: require('./app/models/Search')
 };
 
+// Router
+App.Router = require('./app/Router');
+
 $(function() {
 
-  $('[data-search="Search"]').each(function() {
-    App.search = new App.Models.Search({
-      'urlRoot': $(this).attr('data-endpoint'),
-      'return': $(this).attr('data-return')
-    }, {
-      container: this
-    });
+  var $search = $('[data-search="Search"]');
+
+  App.search = new App.Models.Search({
+    'urlRoot': $search.attr('data-endpoint'),
+    'return': $search.attr('data-return')
+  }, {
+    container: this
+  });
+
+  // Start router
+  App.router = new App.Router({ model: App.search });
+  App.history.start({
+    pushState: true,
+    hashChange: false,
+    root: $search.attr('data-path') || ''
   });
 
 });
-
-
-/* Router: reads query string, sets model attributes
-
-  parse: function(res) {
-    var model = this,
-        out = {},
-        urlParts = this.url().split('?')[1].split('&');
-
-    out.facets = res.facets;
-    out.results = res.hits.hit;
-    out.found = res.hits.found;
-
-    _(urlParts).forEach(function(part) {
-      var split = part.split('='),
-          param = split[0],
-          value = split[1],
-          match = _(model.get('params')).find(function(p) {
-            return (p.param === param);
-          }),
-          key = (match) ? match.attr : param;
-
-      out[key] = decodeURIComponent(value);
-    });
-
-    return out;
-  },
-
-
-
-
-*/
