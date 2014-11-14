@@ -5,6 +5,7 @@ module.exports = App.Model.extend({
     parser: 'structured',
     size: 10,
     start: 0,
+    sort: '_score desc',
     partial: false,
     highlights: {},
     expressions: {},

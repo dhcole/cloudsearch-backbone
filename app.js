@@ -9,7 +9,10 @@ App.Views = {
   SearchField: require('./app/views/SearchField'),
   Results: require('./app/views/Results'),
   Facet: require('./app/views/Facet'),
-  Pager: require('./app/views/Pager')
+  Pager: require('./app/views/Pager'),
+  Summary: require('./app/views/Summary'),
+  Settings: require('./app/views/Settings')
+
 };
 
 // Models

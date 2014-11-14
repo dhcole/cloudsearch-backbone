@@ -1,0 +1,25 @@
+<% if (count > 1) { %>
+<div class="settings">
+  <div class="settings-page">
+    <span>Show </span>
+      <select class="size">
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    <span>results per page</span>
+  </div>
+  <div class="settings-sort">
+    <span>Sort by:</span>
+    <select class="sort">
+      <option value="_score desc">Relevance</option>
+      <option value="year asc">Year (Oldest First)</option>
+      <option value="year desc">Year (Newest First)</option>
+      <option value="title asc">Title (A-Z)</option>
+      <option value="title desc">Title (Z-A)</option>
+      <option value="updated_at desc">Recently Updated</option>
+    </select>
+  </div>
+</div>
+<% } %>

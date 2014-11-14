@@ -1,0 +1,21 @@
+<% if (filters.length) { %>
+<div class="summary-facets">
+  <span>You searched for: </span>
+  <% _(filters).forEach(function(filter) { %>
+  <a class="search-filter btn btn-default" data-facet="<%- filter.id %>" data-bucket="<%- filter.bucket %>" href="#"><%= filter.bucket %><span class="x">&times;</span></a>
+  <% }); %>
+</div>
+<% } %>
+
+<% if (query) { %>
+<div class="summary-query">
+  <span>Search results for: </span>
+  <span class="query"><%- query %></span>
+</div>
+<% } %>
+
+<% if (count) { %>
+<div class="summary-count">
+  <span>Displaying items <%- x %>-<%- y %> of <%- count %>
+</div>
+<% } %>

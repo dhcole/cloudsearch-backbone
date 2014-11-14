@@ -5,12 +5,13 @@ module.exports = App.View.extend({
         view = this;
     this.views = [];
 
-    // Load search field
-    this.$('[data-search="SearchField"]').each(function() {
-      view.views.push(new App.Views.SearchField({ 
-        el: this,
-        model: model
-      }));
+    _(['SearchField', 'Pager', 'Summary', 'Settings']).forEach(function(component) {
+      this.$('[data-search="' + component + '"]').each(function() {
+        view.views.push(new App.Views[component]({ 
+          el: this,
+          model: model
+        }));
+      });
     });
 
     // Load facets
@@ -25,14 +26,6 @@ module.exports = App.View.extend({
         label: label,
         el: this,
         id: id
-      }));
-    });
-
-    // Load pagers
-    this.$('[data-search="Pager"]').each(function() {
-      view.views.push(new App.Views.Pager({ 
-        el: this,
-        model: model
       }));
     });
 
