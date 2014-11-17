@@ -31,7 +31,8 @@ $(function() {
 
   App.search = new App.Models.Search({
     'urlRoot': $search.attr('data-endpoint'),
-    'return': $search.attr('data-return')
+    'return': $search.attr('data-return'),
+    'highlight': ($search.attr('data-highlight')) ? JSON.parse($search.attr('data-highlight')) : undefined
   }, {
     container: this
   });
@@ -113,7 +114,7 @@ module.exports = App.Model.extend({
     start: 0,
     sort: '_score desc',
     partial: false,
-    highlights: {},
+    highlight: {},
     expressions: {},
     facets: {}, // Facet results
     getFacets: {}, // URL param facets
@@ -159,8 +160,8 @@ module.exports = App.Model.extend({
     }
 
     // Highlights
-    _(model.get('highlights')).forEach(function(settings, id) {
-      params.push({ attr: 'highlight.' + id, value: settings });
+    _(model.get('highlight')).forEach(function(settings, id) {
+      params.push({ attr: 'highlight.' + id, value: JSON.stringify(settings) });
     });
 
     // Expressions
@@ -457,7 +458,8 @@ module.exports = App.View.extend({
         data.id = item.id;
         data.link = _(view.link).template({ interpolate: /\{\{(.+?)\}\}/g })(data);
         data.meta = {};
-
+        data.title = (item.highlights && item.highlights.title) || data.title;
+        data.summary = (item.highlights && item.highlights.summary) || data.summary;
         _(view.meta).forEach(function(m) {
           data.meta[m] = { label: m, value: data[m] };
         });

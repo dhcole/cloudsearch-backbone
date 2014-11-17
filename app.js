@@ -29,7 +29,8 @@ $(function() {
 
   App.search = new App.Models.Search({
     'urlRoot': $search.attr('data-endpoint'),
-    'return': $search.attr('data-return')
+    'return': $search.attr('data-return'),
+    'highlight': ($search.attr('data-highlight')) ? JSON.parse($search.attr('data-highlight')) : undefined
   }, {
     container: this
   });

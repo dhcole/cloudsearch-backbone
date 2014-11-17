@@ -24,7 +24,8 @@ module.exports = App.View.extend({
         data.id = item.id;
         data.link = _(view.link).template({ interpolate: /\{\{(.+?)\}\}/g })(data);
         data.meta = {};
-
+        data.title = (item.highlights && item.highlights.title) || data.title;
+        data.summary = (item.highlights && item.highlights.summary) || data.summary;
         _(view.meta).forEach(function(m) {
           data.meta[m] = { label: m, value: data[m] };
         });

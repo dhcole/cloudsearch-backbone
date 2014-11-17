@@ -7,7 +7,7 @@ module.exports = App.Model.extend({
     start: 0,
     sort: '_score desc',
     partial: false,
-    highlights: {},
+    highlight: {},
     expressions: {},
     facets: {}, // Facet results
     getFacets: {}, // URL param facets
@@ -53,8 +53,8 @@ module.exports = App.Model.extend({
     }
 
     // Highlights
-    _(model.get('highlights')).forEach(function(settings, id) {
-      params.push({ attr: 'highlight.' + id, value: settings });
+    _(model.get('highlight')).forEach(function(settings, id) {
+      params.push({ attr: 'highlight.' + id, value: JSON.stringify(settings) });
     });
 
     // Expressions
