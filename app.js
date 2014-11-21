@@ -38,7 +38,7 @@ $(function() {
   // Start router
   App.router = new App.Router({ model: App.search });
   App.history.start({
-    pushState: true,
+    pushState: ($search.attr('data-pushstate') === false.toString()) ? false : true,
     hashChange: false,
     root: $search.attr('data-path') || ''
   });

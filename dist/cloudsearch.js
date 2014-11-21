@@ -40,7 +40,7 @@ $(function() {
   // Start router
   App.router = new App.Router({ model: App.search });
   App.history.start({
-    pushState: true,
+    pushState: ($search.attr('data-pushstate') === false.toString()) ? false : true,
     hashChange: false,
     root: $search.attr('data-path') || ''
   });
@@ -78,11 +78,11 @@ module.exports = App.Router.extend({
           key = (match) ? match.attr : param;
 
       if (_(model.get('params')).indexOf(key) >= 0) {
-        attributes[key] = decodeURIComponent(value);
+        attributes[key] = urlClean(value);
       }
-      if (key === 'parser') attributes[key] = decodeURIComponent(value);
-      if (key === 'query') attributes[key] = decodeURIComponent(value);
-      if (key === 'fq') fq = decodeURIComponent(value);
+      if (key === 'parser') attributes[key] = urlClean(value);
+      if (key === 'query') attributes[key] = urlClean(value);
+      if (key === 'fq') fq = urlClean(value);
     });
 
     // Parse filters
@@ -100,6 +100,9 @@ module.exports = App.Router.extend({
     // Set attributes and request data without updating url
     model.set(attributes, { silent: true }).load();
 
+    function urlClean(value) {
+      return decodeURIComponent(value.replace(/\+/g, ' '));
+    }
   }
 
 });

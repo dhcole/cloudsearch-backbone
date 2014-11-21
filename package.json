@@ -4,8 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "watchify app.js -t jstify -o dist/cloudsearch.js",
-    "build": "browserify app.js -t jstify | uglifyjs -c > dist/cloudsearch.min.js",
+    "start": "watchify app.js -t [ jstify --minifierOpts false ] -o dist/cloudsearch.js",
+    "build": "browserify app.js -t [ jstify --minifierOpts false ] | uglifyjs -c > dist/cloudsearch.min.js",
     "clean": "rm dist/*"
   },
   "author": "dhcole",
