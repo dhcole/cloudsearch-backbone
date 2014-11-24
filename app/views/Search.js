@@ -46,6 +46,7 @@ module.exports = App.View.extend({
 
   render: function() {
 
+    window.scrollTo(0, 0);
     _(this.views).forEach(function(view) {
       view.render();
     });
