@@ -1,6 +1,8 @@
 module.exports = App.View.extend({
 
-  template: require('../templates/Facet.html'),
+  template: ($('#template-facet').html()) ?
+    _.template($('#template-facet').html()) :
+    require('../templates/Facet.html'),
 
   initialize: function(options) {
     this.label = options.label || this.id;

@@ -35,13 +35,7 @@ module.exports = App.Router.extend({
     });
 
     // Parse filters
-    if (fq) {
-      fq = fq.match(/\s\(.+?\)/g).map(function(part) {
-        var matches = part.match(/\w\s(.+?):\s'(.+?)'/);
-        return { id: matches[1], bucket: matches[2] };
-      });
-      attributes.filters = fq;
-    }
+    if (fq) attributes.filters = parseFilters(fq);
 
     // Remove structured parser for normal text searches
     if (!attributes.parser) attributes.parser = undefined;
@@ -52,6 +46,22 @@ module.exports = App.Router.extend({
     function urlClean(value) {
       return decodeURIComponent(value.replace(/\+/g, ' '));
     }
+
+    function parseFilters(fq) {
+      var filters = [];
+      var sets = fq.match(/\s\((.*)\)\)/)[1].split(') (');
+      _(sets).forEach(function(set) {
+        var pairs = set.match(/\s(.*?\w)'/g);
+        _(pairs).forEach(function(pair) {
+          var parts = pair.match(/\s(.*?):\s'(.*?)'/);
+          filters.push({
+            id: parts[1],
+            bucket: parts[2]
+          });
+        });
+      });
+      return filters;
+    } 
   }
 
 });

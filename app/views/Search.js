@@ -18,8 +18,12 @@ module.exports = App.View.extend({
     this.$('[data-search="Facet"]').each(function() {
       var id = $(this).attr('data-facet'),
           label = $(this).attr('data-label'),
+          operator = $(this).attr('data-operator') || 'and',
           settings = $(this).attr('data-settings') || '{}';
-      model.get('getFacets')[id] = settings;
+      model.get('getFacets')[id] = {
+        settings: settings,
+        operator: operator
+      };
 
       view.views.push(new App.Views.Facet({
         model: model,

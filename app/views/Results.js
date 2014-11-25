@@ -1,7 +1,12 @@
 module.exports = App.View.extend({
 
-  template: require('../templates/Results.html'),
-  emptyTemplate: require('../templates/NoResults.html'),
+  template: ($('#template-results').html()) ?
+    _.template($('#template-results').html()) :
+    require('../templates/Results.html'),
+
+  emptyTemplate: ($('#template-no-results').html()) ?
+    _.template($('#template-no-results').html()) :
+    require('../templates/NoResults.html'),
 
   initialize: function(options) {
     this.link = options.link;

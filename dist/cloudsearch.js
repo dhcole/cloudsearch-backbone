@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/dhcole/dev/cloudsearch-backbone/app.js":[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 (function (global){
 // Shared resources
 global.App = require('backbone');
@@ -48,7 +48,7 @@ $(function() {
 });
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./app/Router":"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js","./app/models/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js","./app/views/Facet":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js","./app/views/Pager":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js","./app/views/Results":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js","./app/views/Search":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js","./app/views/SearchField":"/Users/dhcole/dev/cloudsearch-backbone/app/views/SearchField.js","./app/views/Settings":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Settings.js","./app/views/Summary":"/Users/dhcole/dev/cloudsearch-backbone/app/views/Summary.js","backbone":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js","underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/Router.js":[function(require,module,exports){
+},{"./app/Router":2,"./app/models/Search":3,"./app/views/Facet":10,"./app/views/Pager":11,"./app/views/Results":12,"./app/views/Search":13,"./app/views/SearchField":14,"./app/views/Settings":15,"./app/views/Summary":16,"backbone":18,"underscore":19}],2:[function(require,module,exports){
 module.exports = App.Router.extend({
 
   initialize: function(options) {
@@ -86,13 +86,7 @@ module.exports = App.Router.extend({
     });
 
     // Parse filters
-    if (fq) {
-      fq = fq.match(/\s\(.+?\)/g).map(function(part) {
-        var matches = part.match(/\w\s(.+?):\s'(.+?)'/);
-        return { id: matches[1], bucket: matches[2] };
-      });
-      attributes.filters = fq;
-    }
+    if (fq) attributes.filters = parseFilters(fq);
 
     // Remove structured parser for normal text searches
     if (!attributes.parser) attributes.parser = undefined;
@@ -103,11 +97,27 @@ module.exports = App.Router.extend({
     function urlClean(value) {
       return decodeURIComponent(value.replace(/\+/g, ' '));
     }
+
+    function parseFilters(fq) {
+      var filters = [];
+      var sets = fq.match(/\s\((.*)\)\)/)[1].split(') (');
+      _(sets).forEach(function(set) {
+        var pairs = set.match(/\s(.*?\w)'/g);
+        _(pairs).forEach(function(pair) {
+          var parts = pair.match(/\s(.*?):\s'(.*?)'/);
+          filters.push({
+            id: parts[1],
+            bucket: parts[2]
+          });
+        });
+      });
+      return filters;
+    } 
   }
 
 });
 
-},{}],"/Users/dhcole/dev/cloudsearch-backbone/app/models/Search.js":[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 module.exports = App.Model.extend({
 
   defaults: {
@@ -144,18 +154,27 @@ module.exports = App.Model.extend({
     if (base === undefined) base = this.get('urlRoot'),
 
     // Facets
-    _(model.get('getFacets')).forEach(function(settings, id) {
-      params.push({ attr: 'facet.' + id, value: settings });
+    _(model.get('getFacets')).forEach(function(options, id) {
+      params.push({ attr: 'facet.' + id, value: options.settings });
     });
 
     // Filters
     if (model.get('filters').length) {
 
-      filters = _(model.get('filters')).map(function(filter) {
-        var bucket = "'" + filter.bucket + "'";
-        return '(and ' + filter.id + ': ' + bucket + ')';
+      var filters = [];
+      _(model.get('getFacets')).forEach(function(facet, id) {
+        var newFilters = _(model.get('filters'))
+          .chain()
+          .where({ id: id })
+          .map(function(filter) {
+            var bucket = "'" + filter.bucket + "'";
+            return filter.id + ': ' + bucket;
+          })
+          .value();
+        if (newFilters.length) {
+          filters.push('(' + facet.operator + ' ' + newFilters.join(' ') + ')');
+        }
       });
-
       params.push({
         param: 'fq', 
         value: '(and ' + filters.join(' ') + ')'
@@ -221,7 +240,7 @@ module.exports = App.Model.extend({
 
 });
 
-},{}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Facet.html":[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -249,7 +268,7 @@ __p+='';
 return __p;
 };
 
-},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/NoResults.html":[function(require,module,exports){
+},{"underscore":19}],5:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -259,7 +278,7 @@ __p+='Sorry, no results were found for your search.';
 return __p;
 };
 
-},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Results.html":[function(require,module,exports){
+},{"underscore":19}],6:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -283,7 +302,7 @@ __p+='</dl></div>';
 return __p;
 };
 
-},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/SearchField.html":[function(require,module,exports){
+},{"underscore":19}],7:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -295,7 +314,7 @@ __p+='<form class="form-inline"><input type="search" class="form-control" placeh
 return __p;
 };
 
-},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Settings.html":[function(require,module,exports){
+},{"underscore":19}],8:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -309,7 +328,7 @@ __p+='';
 return __p;
 };
 
-},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Summary.html":[function(require,module,exports){
+},{"underscore":19}],9:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -349,10 +368,12 @@ __p+='';
 return __p;
 };
 
-},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Facet.js":[function(require,module,exports){
+},{"underscore":19}],10:[function(require,module,exports){
 module.exports = App.View.extend({
 
-  template: require('../templates/Facet.html'),
+  template: ($('#template-facet').html()) ?
+    _.template($('#template-facet').html()) :
+    require('../templates/Facet.html'),
 
   initialize: function(options) {
     this.label = options.label || this.id;
@@ -399,7 +420,7 @@ module.exports = App.View.extend({
 
 });
 
-},{"../templates/Facet.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Facet.html"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Pager.js":[function(require,module,exports){
+},{"../templates/Facet.html":4}],11:[function(require,module,exports){
 // Libraries
 require('../../lib/jquery.SimplePagination.js');
 
@@ -434,11 +455,16 @@ module.exports = App.View.extend({
 
 });
 
-},{"../../lib/jquery.SimplePagination.js":"/Users/dhcole/dev/cloudsearch-backbone/lib/jquery.SimplePagination.js"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Results.js":[function(require,module,exports){
+},{"../../lib/jquery.SimplePagination.js":17}],12:[function(require,module,exports){
 module.exports = App.View.extend({
 
-  template: require('../templates/Results.html'),
-  emptyTemplate: require('../templates/NoResults.html'),
+  template: ($('#template-results').html()) ?
+    _.template($('#template-results').html()) :
+    require('../templates/Results.html'),
+
+  emptyTemplate: ($('#template-no-results').html()) ?
+    _.template($('#template-no-results').html()) :
+    require('../templates/NoResults.html'),
 
   initialize: function(options) {
     this.link = options.link;
@@ -479,7 +505,7 @@ module.exports = App.View.extend({
 
 });
 
-},{"../templates/NoResults.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/NoResults.html","../templates/Results.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Results.html"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Search.js":[function(require,module,exports){
+},{"../templates/NoResults.html":5,"../templates/Results.html":6}],13:[function(require,module,exports){
 module.exports = App.View.extend({
 
   initialize: function() {
@@ -500,8 +526,12 @@ module.exports = App.View.extend({
     this.$('[data-search="Facet"]').each(function() {
       var id = $(this).attr('data-facet'),
           label = $(this).attr('data-label'),
+          operator = $(this).attr('data-operator') || 'and',
           settings = $(this).attr('data-settings') || '{}';
-      model.get('getFacets')[id] = settings;
+      model.get('getFacets')[id] = {
+        settings: settings,
+        operator: operator
+      };
 
       view.views.push(new App.Views.Facet({
         model: model,
@@ -528,6 +558,7 @@ module.exports = App.View.extend({
 
   render: function() {
 
+    window.scrollTo(0, 0);
     _(this.views).forEach(function(view) {
       view.render();
     });
@@ -537,10 +568,12 @@ module.exports = App.View.extend({
 
 });
 
-},{}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/SearchField.js":[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 module.exports = App.View.extend({
 
-  template: require('../templates/SearchField.html'),
+  template: ($('#template-search-field').html()) ?
+    _.template($('#template-search-field').html()) :
+    require('../templates/SearchField.html'),
 
   initialize: function() {
   },
@@ -570,10 +603,12 @@ module.exports = App.View.extend({
 
 });
 
-},{"../templates/SearchField.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/SearchField.html"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Settings.js":[function(require,module,exports){
+},{"../templates/SearchField.html":7}],15:[function(require,module,exports){
 module.exports = App.View.extend({
 
-  template: require('../templates/Settings.html'),
+  template: ($('#template-settings').html()) ?
+    _.template($('#template-settings').html()) :
+    require('../templates/Settings.html'),
 
   initialize: function() {
   },
@@ -608,10 +643,12 @@ module.exports = App.View.extend({
 
 });
 
-},{"../templates/Settings.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Settings.html"}],"/Users/dhcole/dev/cloudsearch-backbone/app/views/Summary.js":[function(require,module,exports){
+},{"../templates/Settings.html":8}],16:[function(require,module,exports){
 module.exports = App.View.extend({
 
-  template: require('../templates/Summary.html'),
+  template: ($('#template-summary').html()) ?
+    _.template($('#template-summary').html()) :
+    require('../templates/Summary.html'),
 
   initialize: function() {
   },
@@ -653,7 +690,7 @@ module.exports = App.View.extend({
 
 });
 
-},{"../templates/Summary.html":"/Users/dhcole/dev/cloudsearch-backbone/app/templates/Summary.html"}],"/Users/dhcole/dev/cloudsearch-backbone/lib/jquery.SimplePagination.js":[function(require,module,exports){
+},{"../templates/Summary.html":9}],17:[function(require,module,exports){
 /**
 * simplePagination.js v1.6
 * A simple jQuery pagination plugin.
@@ -990,7 +1027,7 @@ module.exports = App.View.extend({
 	};
 
 })(jQuery);
-},{}],"/Users/dhcole/dev/cloudsearch-backbone/node_modules/backbone/backbone.js":[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 //     Backbone.js 1.1.2
 
 //     (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -2600,7 +2637,7 @@ module.exports = App.View.extend({
 
 }));
 
-},{"underscore":"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js"}],"/Users/dhcole/dev/cloudsearch-backbone/node_modules/underscore/underscore.js":[function(require,module,exports){
+},{"underscore":19}],19:[function(require,module,exports){
 //     Underscore.js 1.7.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -4017,4 +4054,4 @@ module.exports = App.View.extend({
   }
 }.call(this));
 
-},{}]},{},["/Users/dhcole/dev/cloudsearch-backbone/app.js"]);
+},{}]},{},[1]);

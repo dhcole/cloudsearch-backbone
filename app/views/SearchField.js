@@ -1,6 +1,8 @@
 module.exports = App.View.extend({
 
-  template: require('../templates/SearchField.html'),
+  template: ($('#template-search-field').html()) ?
+    _.template($('#template-search-field').html()) :
+    require('../templates/SearchField.html'),
 
   initialize: function() {
   },

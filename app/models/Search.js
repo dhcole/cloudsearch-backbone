@@ -34,18 +34,27 @@ module.exports = App.Model.extend({
     if (base === undefined) base = this.get('urlRoot'),
 
     // Facets
-    _(model.get('getFacets')).forEach(function(settings, id) {
-      params.push({ attr: 'facet.' + id, value: settings });
+    _(model.get('getFacets')).forEach(function(options, id) {
+      params.push({ attr: 'facet.' + id, value: options.settings });
     });
 
     // Filters
     if (model.get('filters').length) {
 
-      filters = _(model.get('filters')).map(function(filter) {
-        var bucket = "'" + filter.bucket + "'";
-        return '(and ' + filter.id + ': ' + bucket + ')';
+      var filters = [];
+      _(model.get('getFacets')).forEach(function(facet, id) {
+        var newFilters = _(model.get('filters'))
+          .chain()
+          .where({ id: id })
+          .map(function(filter) {
+            var bucket = "'" + filter.bucket + "'";
+            return filter.id + ': ' + bucket;
+          })
+          .value();
+        if (newFilters.length) {
+          filters.push('(' + facet.operator + ' ' + newFilters.join(' ') + ')');
+        }
       });
-
       params.push({
         param: 'fq', 
         value: '(and ' + filters.join(' ') + ')'

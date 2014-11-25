@@ -1,6 +1,8 @@
 module.exports = App.View.extend({
 
-  template: require('../templates/Template.html'),
+  template: ($('#template-template').html()) ?
+    _.template($('#template-template').html()) :
+    require('../templates/Template.html'),
 
   initialize: function() {
   },
