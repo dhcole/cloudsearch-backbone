@@ -48,7 +48,7 @@ $(function() {
 });
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./app/Router":2,"./app/models/Search":3,"./app/views/Facet":10,"./app/views/Pager":11,"./app/views/Results":12,"./app/views/Search":13,"./app/views/SearchField":14,"./app/views/Settings":15,"./app/views/Summary":16,"backbone":18,"underscore":19}],2:[function(require,module,exports){
+},{"./app/Router":2,"./app/models/Search":3,"./app/views/Facet":10,"./app/views/Pager":11,"./app/views/Results":12,"./app/views/Search":13,"./app/views/SearchField":14,"./app/views/Settings":15,"./app/views/Summary":16,"backbone":18,"underscore":20}],2:[function(require,module,exports){
 module.exports = App.Router.extend({
 
   initialize: function(options) {
@@ -118,6 +118,8 @@ module.exports = App.Router.extend({
 });
 
 },{}],3:[function(require,module,exports){
+var queue = require('queue-async');
+
 module.exports = App.Model.extend({
 
   defaults: {
@@ -233,14 +235,84 @@ module.exports = App.Model.extend({
     this.fetch({
       silent: true,
       success: function(model, res, options) {
-        model.view.render();
+        model.facetCounts(function() {
+          model.view.render();
+        });
       }
     });
+  },
+
+  facetCounts: function(done) {
+    var model = this;
+
+    if (this.get('filters').length) {
+      var facets = _(this.get('filters')).chain().pluck('id').uniq().value(),
+          base = model.get('urlRoot') + '?q=matchall&q.parser=structured&size=0&',
+          count = {},
+          q = queue();
+
+      // For each 'or' facet
+      _(facets).forEach(function(facetID) {
+        if (model.get('getFacets')[facetID].operator !== 'or') return;
+
+        var params = [],
+            url = '';
+
+        // Get facet data
+        params.push(
+          'facet.' + facetID + "=" + 
+          encodeURIComponent(model.get('getFacets')[facetID].settings)
+        );
+
+        // Filtered by all other filters
+        var filters = [];
+        _(model.get('getFacets')).forEach(function(facet, id) {
+          if (id === facetID) return;
+
+          var newFilters = _(model.get('filters'))
+            .chain()
+            .where({ id: id })
+            .map(function(filter) {
+              var bucket = "'" + filter.bucket + "'";
+              return filter.id + ': ' + bucket;
+            })
+            .value();
+          if (newFilters.length) {
+            filters.push('(' + facet.operator + ' ' + newFilters.join(' ') + ')');
+          }
+        });
+        if (filters.length) params.push(
+          'fq' + '=' +
+          encodeURIComponent('(and ' + filters.join(' ') + ')')
+        );
+
+        url = base + params.join('&');
+        q.defer(function(cb) {
+          $.get(url, function(data) { cb(null, data); });
+        });
+      });
+
+      q.awaitAll(function(err, data) {
+        data = _(data).reduce(function(memo, res) {
+          return _(memo).extend(res.facets);
+        }, {});
+
+        model.set({
+          facets: _(model.get('facets')).extend(data)
+        }, {
+          silent: true
+        });
+
+        done();
+      });
+    } else {
+      done();
+    }
   }
 
 });
 
-},{}],4:[function(require,module,exports){
+},{"queue-async":19}],4:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -268,7 +340,7 @@ __p+='';
 return __p;
 };
 
-},{"underscore":19}],5:[function(require,module,exports){
+},{"underscore":20}],5:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -278,7 +350,7 @@ __p+='Sorry, no results were found for your search.';
 return __p;
 };
 
-},{"underscore":19}],6:[function(require,module,exports){
+},{"underscore":20}],6:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -302,7 +374,7 @@ __p+='</dl></div>';
 return __p;
 };
 
-},{"underscore":19}],7:[function(require,module,exports){
+},{"underscore":20}],7:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -314,7 +386,7 @@ __p+='<form class="form-inline"><input type="search" class="form-control" placeh
 return __p;
 };
 
-},{"underscore":19}],8:[function(require,module,exports){
+},{"underscore":20}],8:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -328,7 +400,7 @@ __p+='';
 return __p;
 };
 
-},{"underscore":19}],9:[function(require,module,exports){
+},{"underscore":20}],9:[function(require,module,exports){
 var _ = require('underscore');
 module.exports = function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
@@ -368,7 +440,7 @@ __p+='';
 return __p;
 };
 
-},{"underscore":19}],10:[function(require,module,exports){
+},{"underscore":20}],10:[function(require,module,exports){
 module.exports = App.View.extend({
 
   template: ($('#template-facet').html()) ?
@@ -449,6 +521,7 @@ module.exports = App.View.extend({
   },
 
   loadPage: function(pageNumber, event) {
+    window.scrollTo(0, 0);
     this.model.set('start', this.model.get('size') * pageNumber - this.model.get('size'));
     return false;
   }
@@ -557,12 +630,9 @@ module.exports = App.View.extend({
   },
 
   render: function() {
-
-    window.scrollTo(0, 0);
     _(this.views).forEach(function(view) {
       view.render();
     });
-
     return this;
   }
 
@@ -2637,7 +2707,89 @@ module.exports = App.View.extend({
 
 }));
 
-},{"underscore":19}],19:[function(require,module,exports){
+},{"underscore":20}],19:[function(require,module,exports){
+(function() {
+  var slice = [].slice;
+
+  function queue(parallelism) {
+    var q,
+        tasks = [],
+        started = 0, // number of tasks that have been started (and perhaps finished)
+        active = 0, // number of tasks currently being executed (started but not finished)
+        remaining = 0, // number of tasks not yet finished
+        popping, // inside a synchronous task callback?
+        error = null,
+        await = noop,
+        all;
+
+    if (!parallelism) parallelism = Infinity;
+
+    function pop() {
+      while (popping = started < tasks.length && active < parallelism) {
+        var i = started++,
+            t = tasks[i],
+            a = slice.call(t, 1);
+        a.push(callback(i));
+        ++active;
+        t[0].apply(null, a);
+      }
+    }
+
+    function callback(i) {
+      return function(e, r) {
+        --active;
+        if (error != null) return;
+        if (e != null) {
+          error = e; // ignore new tasks and squelch active callbacks
+          started = remaining = NaN; // stop queued tasks from starting
+          notify();
+        } else {
+          tasks[i] = r;
+          if (--remaining) popping || pop();
+          else notify();
+        }
+      };
+    }
+
+    function notify() {
+      if (error != null) await(error);
+      else if (all) await(error, tasks);
+      else await.apply(null, [error].concat(tasks));
+    }
+
+    return q = {
+      defer: function() {
+        if (!error) {
+          tasks.push(arguments);
+          ++remaining;
+          pop();
+        }
+        return q;
+      },
+      await: function(f) {
+        await = f;
+        all = false;
+        if (!remaining) notify();
+        return q;
+      },
+      awaitAll: function(f) {
+        await = f;
+        all = true;
+        if (!remaining) notify();
+        return q;
+      }
+    };
+  }
+
+  function noop() {}
+
+  queue.version = "1.0.7";
+  if (typeof define === "function" && define.amd) define(function() { return queue; });
+  else if (typeof module === "object" && module.exports) module.exports = queue;
+  else this.queue = queue;
+})();
+
+},{}],20:[function(require,module,exports){
 //     Underscore.js 1.7.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors

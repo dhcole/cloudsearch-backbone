@@ -1,3 +1,5 @@
+var queue = require('queue-async');
+
 module.exports = App.Model.extend({
 
   defaults: {
@@ -113,9 +115,79 @@ module.exports = App.Model.extend({
     this.fetch({
       silent: true,
       success: function(model, res, options) {
-        model.view.render();
+        model.facetCounts(function() {
+          model.view.render();
+        });
       }
     });
+  },
+
+  facetCounts: function(done) {
+    var model = this;
+
+    if (this.get('filters').length) {
+      var facets = _(this.get('filters')).chain().pluck('id').uniq().value(),
+          base = model.get('urlRoot') + '?q=matchall&q.parser=structured&size=0&',
+          count = {},
+          q = queue();
+
+      // For each 'or' facet
+      _(facets).forEach(function(facetID) {
+        if (model.get('getFacets')[facetID].operator !== 'or') return;
+
+        var params = [],
+            url = '';
+
+        // Get facet data
+        params.push(
+          'facet.' + facetID + "=" + 
+          encodeURIComponent(model.get('getFacets')[facetID].settings)
+        );
+
+        // Filtered by all other filters
+        var filters = [];
+        _(model.get('getFacets')).forEach(function(facet, id) {
+          if (id === facetID) return;
+
+          var newFilters = _(model.get('filters'))
+            .chain()
+            .where({ id: id })
+            .map(function(filter) {
+              var bucket = "'" + filter.bucket + "'";
+              return filter.id + ': ' + bucket;
+            })
+            .value();
+          if (newFilters.length) {
+            filters.push('(' + facet.operator + ' ' + newFilters.join(' ') + ')');
+          }
+        });
+        if (filters.length) params.push(
+          'fq' + '=' +
+          encodeURIComponent('(and ' + filters.join(' ') + ')')
+        );
+
+        url = base + params.join('&');
+        q.defer(function(cb) {
+          $.get(url, function(data) { cb(null, data); });
+        });
+      });
+
+      q.awaitAll(function(err, data) {
+        data = _(data).reduce(function(memo, res) {
+          return _(memo).extend(res.facets);
+        }, {});
+
+        model.set({
+          facets: _(model.get('facets')).extend(data)
+        }, {
+          silent: true
+        });
+
+        done();
+      });
+    } else {
+      done();
+    }
   }
 
 });

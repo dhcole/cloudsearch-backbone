@@ -26,6 +26,7 @@ module.exports = App.View.extend({
   },
 
   loadPage: function(pageNumber, event) {
+    window.scrollTo(0, 0);
     this.model.set('start', this.model.get('size') * pageNumber - this.model.get('size'));
     return false;
   }

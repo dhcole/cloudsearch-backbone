@@ -13,6 +13,7 @@
   "dependencies": {
     "backbone": "^1.1.2",
     "jquery": "^2.1.1",
+    "queue-async": "^1.0.7",
     "underscore": "^1.6.0"
   },
   "devDependencies": {
