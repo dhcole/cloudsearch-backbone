@@ -512,8 +512,8 @@ module.exports = App.View.extend({
       currentPage: Math.floor(this.model.get('start') / this.model.get('size')) + 1,
       displayedPages: 5,
       cssStyle: 'pagination',
-      prevText: '&#10094;',
-      nextText: '&#10095;',
+      prevText: '&#10094; Previous',
+      nextText: 'Next &#10095;',
       onPageClick: _(this.loadPage).bind(this)
     });
 
